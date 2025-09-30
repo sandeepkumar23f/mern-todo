@@ -1,0 +1,60 @@
+.task-list {
+  display: grid;
+  grid-template-columns: 50px 1fr 2fr 100px;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+/* Header cells */
+.list-header {
+  font-weight: bold;
+  padding: 10px;
+  border: 1px solid #ccc;
+  background-color: #e9ecef;
+  text-align: center;
+}
+
+/* Data cells */
+.list-item {
+  padding: 10px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  text-align: center;
+}
+
+/* Delete button */
+.delete-item {
+  width: 50%;
+  padding: 6px;
+  background-color: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+
+.delete-item:hover {
+  background-color: #c0392b;
+}
+
+
+.update-item {
+  width: 50%;
+  padding: 6px;
+  background-color: #3c45e7;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 10px;
+
+}
+
+.update-item:hover {
+  background-color: #2bc055;
+}
