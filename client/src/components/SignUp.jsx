@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../style/addtask.css";
+import "../style/signup.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 export default function SignUp() {
