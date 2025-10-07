@@ -6,32 +6,34 @@ import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 const app = express();
 app.use(express.json());
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}))
-app.use(cookieParser())
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
+app.use(cookieParser());
 
 app.post("/signup", async (req, res) => {
   const userData = req.body;
   if (userData.email && userData.password) {
     const db = await connection();
-    const collection = await db.collection('users');
-    const result = await collection.insertOne(userData)
-    if(result){
+    const collection = await db.collection("users");
+    const result = await collection.insertOne(userData);
+    if (result) {
       jwt.sign(userData, "Google", { expiresIn: "5d" }, (error, token) => {
-      res.send({
-        success: true,
-        message: 'signup done',
-        token
-      })
-    });
+        res.send({
+          success: true,
+          message: "signup done",
+          token,
+        });
+      });
     }
-  } else{
+  } else {
     res.send({
-        success: false,
-        message: "sign up not done"
-    })
+      success: false,
+      message: "sign up not done",
+    });
   }
 });
 
@@ -39,27 +41,30 @@ app.post("/login", async (req, res) => {
   const userData = req.body;
   if (userData.email && userData.password) {
     const db = await connection();
-    const collection = await db.collection('users');
-    const result = await collection.findOne({email:userData.email,password:userData.password })
-    if(result){
-      jwt.sign(userData, "Google", { expiresIn: "5d" }, (error, token) => {
-      res.send({
-        success: true,
-        message: 'login done',
-        token
-      })
+    const collection = await db.collection("users");
+    const result = await collection.findOne({
+      email: userData.email,
+      password: userData.password,
     });
-    } else{
+    if (result) {
+      jwt.sign(userData, "Google", { expiresIn: "5d" }, (error, token) => {
+        res.send({
+          success: true,
+          message: "login done",
+          token,
+        });
+      });
+    } else {
       res.send({
         success: false,
-        message: 'login failed'
-      })
+        message: "login failed",
+      });
     }
-  } else{
+  } else {
     res.send({
-        success: false,
-        message: "login not done"
-    })
+      success: false,
+      message: "login not done",
+    });
   }
 });
 
@@ -69,12 +74,10 @@ app.post("/add-task", verifyJWTToken, async (req, res) => {
 
     // Optional: simple validation
     if (!task.title || !task.description) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Title and description are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Title and description are required",
+      });
     }
 
     const db = await connection();
@@ -96,12 +99,10 @@ app.post("/add-task", verifyJWTToken, async (req, res) => {
   }
 });
 
-
-
 app.get("/tasks", verifyJWTToken, async (req, res) => {
   try {
     const db = await connection();
-    console.log("cookies")
+    console.log("cookies");
     const collection = db.collection(collectionName);
 
     // Fetch all tasks
@@ -118,7 +119,7 @@ app.get("/tasks", verifyJWTToken, async (req, res) => {
   }
 });
 
-app.get("/task/:id",verifyJWTToken, async (req, res) => {
+app.get("/task/:id", verifyJWTToken, async (req, res) => {
   try {
     const db = await connection();
     const collection = db.collection(collectionName);
@@ -134,23 +135,28 @@ app.get("/task/:id",verifyJWTToken, async (req, res) => {
   }
 });
 
-
-
-app.put("/update-task", verifyJWTToken, async (req, res) => {
+app.put("/update-task/:id", verifyJWTToken, async (req, res) => {
   try {
     const db = await connection();
     const collection = db.collection(collectionName);
-    const { _id, ...fields } = req.body;
-    const update = { $set: fields };
+    const id = req.params.id; // Get ID from URL
+    const { title, description } = req.body; // Only update allowed fields
 
-    console.log(fields);
-
-    const tasks = await collection.updateOne(
-      { _id: new ObjectId(_id) },
+    const update = { $set: { title, description } };
+    const result = await collection.updateOne(
+      { _id: new ObjectId(id) },
       update
     );
 
-    res.status(200).json({ success: true, message: "Task updated", tasks });
+    if (result.modifiedCount > 0) {
+      res
+        .status(200)
+        .json({ success: true, message: "Task updated successfully" });
+    } else {
+      res
+        .status(404)
+        .json({ success: false, message: "Task not found or no changes made" });
+    }
   } catch (err) {
     console.error("Error updating task:", err.message);
     res
@@ -176,12 +182,12 @@ app.delete("/delete/:id", verifyJWTToken, async (req, res) => {
 });
 
 function verifyJWTToken(req, res, next) {
-  const token = req.cookies['token'];
-  jwt.verify(token, 'Google', (error, decoded) => {
+  const token = req.cookies["token"];
+  jwt.verify(token, "Google", (error, decoded) => {
     if (error) {
       return res.send({
         message: "invalid token",
-        success: false
+        success: false,
       });
     }
 

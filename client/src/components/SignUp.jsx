@@ -8,11 +8,11 @@ export default function SignUp() {
 
   // restrict the user to signup if already signup 
   
-  useEffect(()=>{
-    if(localStorage.getItem('signup')){
-      navigate('/')
-    }
-  })
+  // useEffect(()=>{
+  //   if(localStorage.getItem('signup')){
+  //     navigate('/')
+  //   }
+  // })
   const handleSignUp = async () => {
     console.log(userData);
     let result = await fetch("http://localhost:5000/signup", {

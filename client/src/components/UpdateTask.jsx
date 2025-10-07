@@ -8,34 +8,51 @@ export default function UpdateTask() {
     const {id}=useParams();
     useEffect(() =>{
         getTask(id)
-    },[])
+    },[id])
 
     const getTask = async (id)=>{
-        let data = await fetch(`http://localhost:5000/task/`+id);
-        data = await data.json();
-        if(data.tasks){
-            setTaskData(data.tasks)
+        try{
+            let res = await fetch(`http://localhost:5000/task/${id}`,{
+                credentials: "include"
+            });
+            const data = await res.json();
+
+            if(data.success && data.tasks){
+                setTaskData(data.tasks);
+            } else{
+                alert("Failed to fetch task details. Please login again");
+                navigate("/login")
+            }
+        } catch(err){
+            console.error("Error fetching task: ",err)
+            alert("Error fetching task details ")
         }
     }
 
     const updateTask = async ()=>{
-        console.log("function called", taskData);
-        let data = await fetch("http://localhost:5000/update-task",{
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body:JSON.stringify(taskData),
-        });
+        try{
+             console.log("Updating with: ",taskData)
 
-        data = await data.json()
-        if(data){
-            navigate('/')
+             const res = await fetch(`http://localhost:5000/update-task/${id}`,{
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json',},
+                body:JSON.stringify(taskData),
+                credentials: "include"
+             });
+
+             const data = await res.json();
+
+             if(res.ok && data.success){
+                alert("Task updated successfully")
+                navigate("/")
+             } else{
+                alert("Update failed:" + data.message)
+             }
+        } catch(err){
+            alert("error updating task")
+            console.error(err);
         }
-        else{
-            alert("updae failed: "+ data.message)
-        }
-    }
+    };
     return (
         <div className="container">
             <h1>Update Task</h1>
