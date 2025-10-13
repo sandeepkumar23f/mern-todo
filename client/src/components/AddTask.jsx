@@ -5,24 +5,36 @@ import { useNavigate } from "react-router-dom";
 export default function AddTask() {
   const [taskData, setTaskData] = useState({ title: "", description: "" });
   const navigate = useNavigate();
+
   const handleAddTask = async () => {
-    console.log(taskData);
-    let result = await fetch("http://localhost:5000/add-task", {
-      method: "POST",
-      body: JSON.stringify(taskData),
-      credentials: 'include',
-      headers: {
-        "Content-Type": "application/json",
-      }
-    })
-    result = await result.json()
-    if(result.success){
-        navigate('/')
-        console.log("new task added")
-    } else{
-      alert("try after some time")
+    if (!taskData.title || !taskData.description) {
+      alert("Please fill in both title and description");
+      return;
     }
-  }
+
+    try {
+      let result = await fetch("http://localhost:5000/add-task", {
+        method: "POST",
+        body: JSON.stringify(taskData),
+        credentials: "include", 
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      result = await result.json();
+
+      if (result.success) {
+        console.log("New task added:", result);
+        navigate("/"); // redirect to task list
+      } else {
+        alert(result.message || "Failed to add task. Try again.");
+      }
+    } catch (error) {
+      console.error("Error adding task:", error);
+      alert("Server error. Please try again later.");
+    }
+  };
 
   return (
     <div className="container">

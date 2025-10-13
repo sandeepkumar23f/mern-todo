@@ -1,70 +1,69 @@
 import { useState } from "react";
 import "../style/signup.css";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+
 export default function SignUp() {
-  const [userData, setUserData] = useState();
+  const [userData, setUserData] = useState({ name: "", email: "", password: "" });
   const navigate = useNavigate();
 
-  // restrict the user to signup if already signup 
-  
-  // useEffect(()=>{
-  //   if(localStorage.getItem('signup')){
-  //     navigate('/')
-  //   }
-  // })
   const handleSignUp = async () => {
-    console.log(userData);
-    let result = await fetch("http://localhost:5000/signup", {
-      method: "POST",
-      body: JSON.stringify(userData),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    result = await result.json();
-    if (result.success) {
-      console.log(result)
-      document.cookie="token="+result.token;
-      localStorage.setItem('signup',userData.email)
-      navigate('/')
-    } else{
-      alert("invalid credentials")
+    if (!userData.name || !userData.email || !userData.password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    try {
+      let result = await fetch("http://localhost:5000/signup", {
+        method: "POST",
+        body: JSON.stringify(userData),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", 
+      });
+
+      result = await result.json();
+
+      if (result.success) {
+        localStorage.setItem("login", userData.email);
+        navigate("/"); // redirect to task list
+      } else {
+        alert(result.message || "Signup failed");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      alert("Server error. Please try again.");
     }
   };
+
   return (
     <div className="container">
       <h1>Sign Up</h1>
 
-      <label htmlFor="">Name</label>
+      <label>Name</label>
       <input
-        onChange={(event) =>
-          setUserData({ ...userData, name: event.target.value })
-        }
         type="text"
-        name="name"
-        placeholder="Enter user name"
+        placeholder="Enter your name"
+        value={userData.name}
+        onChange={(e) => setUserData({ ...userData, name: e.target.value })}
       />
-      <label htmlFor="">Email</label>
+
+      <label>Email</label>
       <input
-        onChange={(event) =>
-          setUserData({ ...userData, email: event.target.value })
-        }
         type="text"
-        name="email"
-        placeholder="Enter user email"
+        placeholder="Enter your email"
+        value={userData.email}
+        onChange={(e) => setUserData({ ...userData, email: e.target.value })}
       />
-      <label htmlFor="">Password</label>
+
+      <label>Password</label>
       <input
-        onChange={(event) =>
-          setUserData({ ...userData, password: event.target.value })
-        }
-        type="text"
-        name="password"
-        placeholder="Enter user password"
+        type="password"
+        placeholder="Enter your password"
+        value={userData.password}
+        onChange={(e) => setUserData({ ...userData, password: e.target.value })}
       />
+
       <button onClick={handleSignUp} className="submit">
-        Sign up
+        Sign Up
       </button>
 
       <Link to="/login">Login</Link>

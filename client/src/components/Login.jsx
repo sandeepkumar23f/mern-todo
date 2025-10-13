@@ -1,53 +1,72 @@
-import { useState } from "react";
-import '../style/login.css'
+import { useState, useEffect } from "react";
+import "../style/login.css";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-export default function Login(){
 
-    const [userData, setUserData]=useState();
-    const navigate=useNavigate()
+export default function Login() {
+  const [userData, setUserData] = useState({ email: "", password: "" });
+  const navigate = useNavigate();
 
-    // restrict the user to access the login page if they are already login 
-    useEffect(()=>{
-      if(localStorage.getItem('login')){
-        navigate('/')
+  // Redirect if already logged in
+  useEffect(() => {
+    if (localStorage.getItem("login")) {
+      navigate("/");
+    }
+  }, [navigate]);
+
+  const handleLogin = async () => {
+    if (!userData.email || !userData.password) {
+      alert("Please enter email and password");
+      return;
+    }
+
+    try {
+      let result = await fetch("http://localhost:5000/login", {
+        method: "POST",
+        body: JSON.stringify(userData),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", 
+      });
+
+      result = await result.json();
+
+      if (result.success) {
+        localStorage.setItem("login", userData.email);
+        navigate("/"); // redirect to task list
+      } else {
+        alert(result.message || "Wrong credentials");
       }
-    })
-    const handleLogin = async () => {
-    console.log(userData);
-    let result = await fetch("http://localhost:5000/login", {
-      method: "POST",
-      body: JSON.stringify(userData),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    result = await result.json();
-    if (result.success) {
-      console.log(result)
-      document.cookie="token="+result.token;
-      localStorage.setItem('login',userData.email)
-      window.dispatchEvent(new Event('localStorage-change'))
-      navigate('/')
-    } else{
-      alert("wrong credentials")
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Server error. Please try again.");
     }
   };
 
-    return(
-        <div className="container">
-            <h1>Login</h1>
-            <label htmlFor="">Email</label>
-            <input
-            onChange={(event)=>setUserData({...userData,email:event.target.value})}
-            type="text" name="email" placeholder="Enter user email" />
-            <label htmlFor="">Password</label>
-            <input
-            onChange={(event)=>setUserData({...userData,password:event.target.value})}
-            type="password" name="password" placeholder="Enter user password"/>
-            <button onClick={handleLogin} className="submit">Login</button>
+  return (
+    <div className="container">
+      <h1>Login</h1>
+      <label>Email</label>
+      <input
+        type="text"
+        placeholder="Enter user email"
+        value={userData.email}
+        onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+      />
 
-            <Link to={"/signup"}>Sign up</Link>
-        </div>
-    )
+      <label>Password</label>
+      <input
+        type="password"
+        placeholder="Enter user password"
+        value={userData.password}
+        onChange={(e) =>
+          setUserData({ ...userData, password: e.target.value })
+        }
+      />
+
+      <button onClick={handleLogin} className="submit">
+        Login
+      </button>
+
+      <Link to="/signup">Sign Up</Link>
+    </div>
+  );
 }

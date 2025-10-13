@@ -14,6 +14,7 @@ app.use(
 );
 app.use(cookieParser());
 
+// SIGNUP
 app.post("/signup", async (req, res) => {
   const userData = req.body;
   if (userData.email && userData.password) {
@@ -21,12 +22,17 @@ app.post("/signup", async (req, res) => {
     const collection = await db.collection("users");
     const result = await collection.insertOne(userData);
     if (result) {
-      jwt.sign(userData, "Google", { expiresIn: "5d" }, (error, token) => {
-        res.send({
-          success: true,
-          message: "signup done",
-          token,
+      const tokenData = { _id: result.insertedId, email: userData.email }; 
+      jwt.sign(tokenData, "Google", { expiresIn: "5d" }, (error, token) => {
+        if (error)
+          return res.status(500).send({ success: false, message: "JWT error" });
+        res.cookie("token", token, {
+          httpOnly: true,
+          secure: false, // set to true in production with HTTPS
+          sameSite: "lax",
+          maxAge: 5 * 24 * 60 * 60 * 1000, // 5 days
         });
+        res.send({ success: true, message: "signup done" });
       });
     }
   } else {
@@ -37,6 +43,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+// LOGIN
 app.post("/login", async (req, res) => {
   const userData = req.body;
   if (userData.email && userData.password) {
@@ -47,12 +54,17 @@ app.post("/login", async (req, res) => {
       password: userData.password,
     });
     if (result) {
-      jwt.sign(userData, "Google", { expiresIn: "5d" }, (error, token) => {
-        res.send({
-          success: true,
-          message: "login done",
-          token,
+      const tokenData = { _id: result._id, email: result.email }; 
+      jwt.sign(tokenData, "Google", { expiresIn: "5d" }, (error, token) => {
+        if (error)
+          return res.status(500).send({ success: false, message: "JWT error" });
+        res.cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "lax",
+          maxAge: 5 * 24 * 60 * 60 * 1000, // 5 days
         });
+        res.send({ success: true, message: "signup done" });
       });
     } else {
       res.send({
@@ -70,9 +82,12 @@ app.post("/login", async (req, res) => {
 
 app.post("/add-task", verifyJWTToken, async (req, res) => {
   try {
-    const task = req.body;
+    const task = {
+      ...req.body,
+      userId: new ObjectId(req.user._id),
+      createdAt: new Date(),
+    };
 
-    // Optional: simple validation
     if (!task.title || !task.description) {
       return res.status(400).json({
         success: false,
@@ -102,11 +117,11 @@ app.post("/add-task", verifyJWTToken, async (req, res) => {
 app.get("/tasks", verifyJWTToken, async (req, res) => {
   try {
     const db = await connection();
-    console.log("cookies");
     const collection = db.collection(collectionName);
 
-    // Fetch all tasks
-    const tasks = await collection.find({}).toArray();
+    const tasks = await collection
+      .find({ userId: new ObjectId(req.user._id) }) 
+      .toArray();
 
     res
       .status(200)
@@ -124,11 +139,20 @@ app.get("/task/:id", verifyJWTToken, async (req, res) => {
     const db = await connection();
     const collection = db.collection(collectionName);
     const id = req.params.id;
-    const tasks = await collection.findOne({ _id: new ObjectId(id) });
+    const task = await collection.findOne({
+      _id: new ObjectId(id),
+      userId: new ObjectId(req.user._id),
+    });
 
-    res.status(200).json({ success: true, message: "Task fetched", tasks });
+    if (!task) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Task not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Task fetched", task });
   } catch (err) {
-    console.error("Error fetching tasks:", err.message);
+    console.error("Error fetching task:", err.message);
     res
       .status(500)
       .json({ success: false, message: "Server error", error: err.message });
@@ -139,12 +163,12 @@ app.put("/update-task/:id", verifyJWTToken, async (req, res) => {
   try {
     const db = await connection();
     const collection = db.collection(collectionName);
-    const id = req.params.id; // Get ID from URL
-    const { title, description } = req.body; // Only update allowed fields
+    const id = req.params.id;
+    const { title, description } = req.body;
 
     const update = { $set: { title, description } };
     const result = await collection.updateOne(
-      { _id: new ObjectId(id) },
+      { _id: new ObjectId(id), userId: new ObjectId(req.user._id) }, 
       update
     );
 
@@ -170,11 +194,19 @@ app.delete("/delete/:id", verifyJWTToken, async (req, res) => {
     const db = await connection();
     const collection = db.collection(collectionName);
     const id = req.params.id;
-    const tasks = await collection.deleteOne({ _id: new ObjectId(id) });
 
-    res.status(200).json({ success: true, message: "Task deleted", tasks });
+    const result = await collection.deleteOne({
+      _id: new ObjectId(id),
+      userId: new ObjectId(req.user._id),
+    });
+
+    if (result.deletedCount > 0) {
+      res.status(200).json({ success: true, message: "Task deleted" });
+    } else {
+      res.status(404).json({ success: false, message: "Task not found" });
+    }
   } catch (err) {
-    console.error("Error fetching tasks:", err.message);
+    console.error("Error deleting task:", err.message);
     res
       .status(500)
       .json({ success: false, message: "Server error", error: err.message });
@@ -183,16 +215,18 @@ app.delete("/delete/:id", verifyJWTToken, async (req, res) => {
 
 function verifyJWTToken(req, res, next) {
   const token = req.cookies["token"];
+  if (!token) {
+    return res.status(401).json({ success: false, message: "No token found" });
+  }
+
   jwt.verify(token, "Google", (error, decoded) => {
     if (error) {
-      return res.send({
-        message: "invalid token",
-        success: false,
-      });
+      return res.status(403).json({ message: "invalid token", success: false });
     }
 
-    console.log(decoded);
+    req.user = decoded;
     next();
   });
 }
+
 app.listen(5000, () => console.log("Server running on port 5000"));
